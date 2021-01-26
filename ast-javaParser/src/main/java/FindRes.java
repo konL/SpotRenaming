@@ -6,13 +6,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class FindRes {
+    static List<String>  fieldsName;
+    static List<String> methodName;
+    static List<String> variableName;
+    //className
 
     public static void main(String[] args) throws Exception {
         //从Parser中获取变量名和方法名
         Map<String,List> map=new HashMap<>();
         map=JavaParserUtils.getData();
-        List<String> fieldsName=map.get("fields_name");
-        List<String> methodName=map.get("method_name");
+        fieldsName=map.get("fields_name");
+        methodName=map.get("method_name");
+        variableName=map.get("variable_name");
 
 
         //为了方便，先假设已经检测出更改的变量名为m_BaseInstance,寻找其他高相似度标识符
@@ -285,8 +290,30 @@ public class FindRes {
 
     }
 
+    //method 这个map 对应的List<Map<merhodName,List<String>>={<methodName1,List<localVariable>,<methName2,List<localVariable>}},methodName被单独取出。
     private static String[] searchRes(String old) {
-        /*1）Inclusion：包含e直接包含的实体和直接包含e的元素。
+        /*1）Inclusion：包含e直接包含的实体和直接包含e的元素。*/
+        //直接包含e，e是函数就是被调用;e是全局变量就是方法中的变量包含e，或者是其他类使用;如果是方法的局部变量，被调用 xxx.attr
+            //1.如果是函数,检测调用该函数的软件实体
+            if(methodName.contains(old)){
+
+            }
+            //2.如果是全局变量，方法中的变量包含e，或者是其他类使用
+            if(fieldsName.contains(old)){
+
+            }
+            //3.如果是局部变量，包含该变量的方法/静态方法还会被调用红
+            if(variableName.contains(old)){
+
+            }
+
+
+
+
+
+
+        //包含e直接包含的实体，暂不考虑。
+                /*
 2）Sibling：e是一个方法，同一个类中的所有方法和字段都被认为是紧密相关的实体
 3）Reference：e所引用的所有实体和引用e的实体
 4)   Inheritance：e是一个类，则其超类和子类

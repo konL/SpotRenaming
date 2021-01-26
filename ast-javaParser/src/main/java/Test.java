@@ -7,13 +7,19 @@ import java.util.regex.Pattern;
 public class Test {
 
     public static void main(String[] args) throws Exception {
-        String[] oldset=split("[m_BaseInstance]");
-        String[] newset=split("[m_Instance]");
-        String[] res={ "[m_BaseInstPanel]", "[setBaseInstanceFromFileQ]","[setBaseInstancesFromDBQ]"};
-        for(String resName:res) {
-            analysis(changedPart(oldset, newset), oldset, resName);
-        }
+//        String[] oldset=split("[m_BaseInstance]");
+//        String[] newset=split("[m_Instance]");
+//        String[] res={ "[m_BaseInstPanel]", "[setBaseInstanceFromFileQ]","[setBaseInstancesFromDBQ]"};
+//        for(String resName:res) {
+//            analysis(changedPart(oldset, newset), oldset, resName);
+//        }
+//提取出局部变量的方法
+        Map<String, List> map=JavaParserUtils.getData();
+        List<String> list=map.get("variable_name");
+        for(String s:list){
 
+            System.out.println(s);
+        }
 
     }
     public static  Map<String,List<List<String>>> changedPart(String[] s1,String[] s2){

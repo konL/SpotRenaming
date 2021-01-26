@@ -12,9 +12,11 @@ public class Srccode extends JPanel {
     }
     public void setBaseInstanceFromFileQ(){
       int as=0;
+      int as2=1;
         //....
     }
     public void setBaseInstancesFromDBQ(){
+      int test=0;
         //......
     }
 }

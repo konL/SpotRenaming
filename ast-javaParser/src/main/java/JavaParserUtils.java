@@ -4,6 +4,8 @@ import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.Name;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import java.io.FileInputStream;
@@ -11,11 +13,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public class JavaParserUtils {
     static List<String> methodName=new ArrayList<String>();
     static List<String> fieldsName=new ArrayList<String>();
     static List<String> methodBody=new ArrayList<String>();
+    static List<String> varibleName=new ArrayList<String>();
     public static Map<String,List> getData() throws Exception{
         FileInputStream in = new FileInputStream("D:\\kon_data\\JAVA_DATA\\SpotRenaming\\ast-javaParser\\src\\main\\resources\\Srccode.java");
 
@@ -35,6 +39,7 @@ public class JavaParserUtils {
         map.put("fields_name",fieldsName);
         map.put("method_name",methodName);
         map.put("method_body",methodBody);
+        map.put("variable_name",varibleName);
         return map;
 
 
@@ -46,6 +51,7 @@ public class JavaParserUtils {
         public void visit(final FieldDeclaration n, Void arg) {
             System.out.println("Fields:"+n.getVariables());
             fieldsName.add(n.getVariables().toString());
+
             super.visit(n, arg);
         }
         @Override
@@ -56,11 +62,24 @@ public class JavaParserUtils {
 
             methodName.add(n.getNameAsString());
             System.out.println("methodName:"+n.getName());
-//            System.out.println("methodParams:"+n.getParameters());
+
+           // System.out.println("methodParams:"+n.getBody().);
 //            System.out.println("----------------------------------------------------------------------------");
 //            System.out.println("methodBody:"+n.getBody());
 //            System.out.println("----------------------------------------------------------------------------");
             methodBody.add(n.getBody().toString());
+
+
+
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(VariableDeclarationExpr n, Void arg) {
+            //System.out.println(n.getVariables());
+            String data=n.getVariables().toString();
+            String[] set=data.substring(1,data.length()-1).split("=");
+            varibleName.add(set[0].trim());
 
 
             super.visit(n, arg);
