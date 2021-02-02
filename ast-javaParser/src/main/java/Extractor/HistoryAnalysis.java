@@ -1,0 +1,824 @@
+package Extractor;
+
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.PackageDeclaration;
+import com.github.javaparser.ast.visitor.VoidVisitor;
+import detectId.DS.ClassDS;
+import detectId.DS.IdentifierDS;
+import detectId.DS.MethodDS;
+import detectId.ParseInfo.ClassCollector;
+import detectId.ParseInfo.VariableCollector;
+
+import detectId.Trace.SyncPipe;
+
+import detectId.utility.SimilarityCal;
+
+
+import java.io.*;
+import java.util.Hashtable;
+import java.util.Optional;
+import java.util.Set;
+import java.util.Vector;
+
+public class HistoryAnalysis {
+    public static void main(String[] args) throws Exception {
+        //读取项目的信息
+        ProjectCommit("Test");
+    }
+
+    /*
+
+     */
+    public static void ProjectCommit(String projectname) throws Exception {
+
+        String projectpath = "D:\\project\\IdentifierStyle\\data\\GitProject\\" + projectname + "\\";
+        String FileIndex = "D:\\project\\IdentifierStyle\\data\\JavaFileIndex\\" + projectname + ".txt";
+        String LogOutput = "D:\\project\\IdentifierStyle\\log\\log_output1.txt";
+//        String LogOutput = "D:\\project\\IdentifierStyle\\log\\log_output1.txt";
+//        String TraceHistory = "D:\\project\\IdentifierStyle\\log\\dump\\" + projectname + ".csv";
+        //根据FileIndex读取
+
+
+        //allcode：每个源代码文件的代码
+        //line:源代码文件位置
+        BufferedReader br = new BufferedReader(new FileReader(FileIndex));
+        String line = "";
+        while ((line = br.readLine()) != null) {
+            Vector<String> allcode = new Vector<String>();
+            BufferedReader read = new BufferedReader(new FileReader(line));
+            String one = "";
+            while ((one = read.readLine()) != null) {
+                allcode.add(one);
+            }
+            read.close();
+
+//            for (String s : allcode) {
+//                System.out.println(s);
+//            }
+
+            //String file=line.substring(line.indexOf(projectpath)+projectpath.length(), line.length());
+            String file = line.substring(line.indexOf(projectname) + projectname.length() + 2, line.length());
+
+//            file=file.replace("\\", "/");
+//            file="../"+file;
+            System.out.println("file===" + file);
+
+            //获取所有标识符
+            Vector<idenDS> alliden = ObtainIdentifier(allcode, line);
+            System.out.println(file);
+            for (idenDS iden : alliden) {
+                //获得相应的标识符
+                String identifier = iden.getIdentifier();
+                //获取对应代码
+                String statement = iden.getStatement();
+                //获取代码行数
+                int lineno = iden.getLocation();
+                lineno++;
+                ExecuteCommand(projectpath, "git log -L " + lineno + "," + lineno + ":" + file, LogOutput);
+                Vector<commitMessage> allcom = ParseCommandContent(LogOutput);
+//                Vector<String> traceResult=TraceAnalysis(allcom,statement);
+//                System.out.println(identifier+",statement="+statement+",location="+lineno);
+                //打印解析数据
+//                for(commitMessage c:allcom){
+//                    Vector<Diff> diffList=c.getDifflist();
+//                    for(Diff d:diffList){
+//                        System.out.println("[From/ToFile="+d.getFromFile()+"/"+d.getToFile()+",Index="+d.getIndex()+"]");
+//                        Vector<String> content=d.getContent();
+//                        for(String con:content){
+//                            System.out.println("content="+con);
+//                        }
+//                    }
+//
+//                }
+//            }
+
+
+//            String file=line.substring(line.indexOf(projectpath)+projectpath.length(), line.length());
+//            file=file.replace("\\", "/");
+//            file="./"+file;
+//
+//            for(idenDS oneiden:alliden)
+//            {
+//                String statement=oneiden.getStatement();
+//                int lineno=oneiden.getLocation();
+//                lineno++;
+////				ExecuteCommand(projectname,"git log --reverse -L "+lineno+","+lineno+":"+file,LogOutput);
+//                ExecuteCommand(projectpath,"git log -L "+lineno+","+lineno+":"+file,LogOutput);
+//                Vector<commitMessage> allcom=ParseCommandContent(LogOutput);
+//                Vector<String> traceResult=TraceAnalysis(allcom,statement);
+//                if(traceResult.size()>1)
+//                {
+////					System.err.println("***************************");
+////					System.err.println(file+"  "+statement);
+////					System.err.println("***************************");
+//
+//                    Vector<String> beforeId=ExtractIdFromStatement(traceResult,oneiden.getIdentifier(),oneiden.getType());
+//
+//                    BufferedWriter bw=new BufferedWriter(new FileWriter(TraceHistory,true));
+//                    bw.write(oneiden.getType()+","+oneiden.getLocation()+","+line+",");
+//
+//                    bw.write(oneiden.getIdentifier()+"<-");
+//                    for(String onetr:beforeId)
+//                    {
+//                        bw.write(onetr+"<-");
+//                    }
+//                    bw.write(",");
+//
+//                    for(String onehis:traceResult)
+//                    {
+//                        if(onehis.contains(","))
+//                        {
+//                            onehis=onehis.replace(",", " ");
+//                        }
+//                        bw.write(onehis+",");
+//                    }
+//                    bw.newLine();
+//                    bw.close();
+//                }
+//            }
+//
+//        }
+//        br.close();
+//
+//        ParseProjectResult(TraceHistory,projectname);
+
+
+            }
+
+
+        }
+    }
+    public static  Vector<idenDS> ObtainIdentifier(Vector<String> allstate, String javafilepath) throws Exception
+    {
+        System.out.println(javafilepath);
+        Vector<IdentifierDS> packages=new Vector<IdentifierDS>();  //加入当前的package
+        Vector<IdentifierDS> types=new Vector<IdentifierDS>();     //类，接口，枚举
+        Vector<IdentifierDS> methods=new Vector<IdentifierDS>();   //method，包括了constructor,setter,getter
+        Vector<IdentifierDS> fields=new Vector<IdentifierDS>();    //
+        Vector<IdentifierDS> variables=new Vector<IdentifierDS>(); //包括了函数的参数
+
+        CompilationUnit cu =null;
+
+        try {
+            cu = JavaParser.parse(new File(javafilepath));
+
+        }
+        catch(Exception e)
+        {
+            System.err.println(e.toString());
+//			BufferedWriter bw=new BufferedWriter(new FileWriter("D:\\project\\IdentifierStyle\\data\\JavaParserCannotParse.txt",true));
+//            bw.write(javafilepath);
+//            bw.newLine();
+//            bw.close();
+        }
+
+        String packagename="";
+        try {
+            Optional<PackageDeclaration> packagename1=cu.getPackageDeclaration();
+            if(packagename1.isPresent())
+            {
+
+                packagename=packagename1.get().toString().trim();
+                if(packagename.startsWith("/*"))
+                    packagename=packagename.substring(packagename.indexOf("*/")+2, packagename.length()).trim();
+                if(packagename.startsWith("//"))
+                    packagename=packagename.substring(packagename.indexOf("package "),packagename.length());
+                if(packagename.startsWith("package "))
+                    packagename=packagename.substring(packagename.indexOf(" ")+1,packagename.length());
+                if(packagename.endsWith(";"))
+                    packagename=packagename.substring(0,packagename.length()-1);
+            }
+
+        }
+        catch(Exception e)
+        {
+            System.err.println(e.toString());
+        }
+        int packloc=1;
+        for(int i=0;i<allstate.size();i++)
+        {
+            if(allstate.get(i).trim().startsWith("package "))
+            {
+                packloc=i+1;
+                break;
+            }
+        }
+
+        IdentifierDS newpackage=new IdentifierDS("","",packagename,"","",packloc);
+        packages.add(newpackage);
+
+
+        Hashtable<String,Integer> variableSet =new Hashtable<String,Integer>();	    	//所有的变量和对象
+        VoidVisitor<Hashtable<String, Integer>> VariableCollector = new VariableCollector();
+        try {
+            VariableCollector.visit(cu, variableSet);
+        }
+        catch(Exception e)
+        {
+            System.err.println(e.toString());
+        }
+
+
+        Vector<ClassDS> classdetails=new Vector<ClassDS>();
+        VoidVisitor<Vector<ClassDS>> classNameCollector = new ClassCollector();
+        try {
+            classNameCollector.visit(cu, classdetails);
+        }
+        catch(Exception e)
+        {
+            System.err.println(e.toString());
+        }
+
+
+        for(ClassDS one :classdetails)
+        {
+            IdentifierDS newclass=new IdentifierDS(one.getClassname(),"",one.getClassname(),"class","",one.getIndex());
+            types.add(newclass);
+
+            Vector<MethodDS> methodlist=one.getMethodlist();
+            for(MethodDS onemethod:methodlist)
+            {
+                IdentifierDS newmethod=new IdentifierDS(one.getClassname(),onemethod.getMethodname(),onemethod.getMethodname(),onemethod.getReturntype(),"",onemethod.getBeginindex());
+                methods.add(newmethod);
+
+                Vector<IdentifierDS> parameters=onemethod.getParameters();
+                for(IdentifierDS oneid:parameters)
+                {
+                    variables.add(oneid);
+                }
+
+            }
+
+            Vector<IdentifierDS> fieldlist=one.getFieldlist();
+            fields.addAll(fieldlist);
+
+        }
+
+
+        Set<String> keyset=variableSet.keySet();
+        for(String onekey:keyset)
+        {
+            int onevalue=variableSet.get(onekey);
+            String methodpar="";
+            String classpar="";
+            for(ClassDS one :classdetails)
+            {
+
+                Vector<MethodDS> methodlist=one.getMethodlist();
+                for(MethodDS onemethod:methodlist)
+                {
+                    if(onevalue>=onemethod.getBeginindex()&&onevalue<=onemethod.getEndindex())
+                    {
+                        methodpar=onemethod.getMethodname();
+                        classpar=one.getClassname();
+                        break;
+                    }
+                }
+            }
+
+
+            if(onekey.contains("="))
+            {
+                String front=onekey.substring(0, onekey.indexOf("=")).trim();
+                String end=onekey.substring(onekey.indexOf("=")+1, onekey.length()).trim();
+                String name=front.substring(front.lastIndexOf(" ")+1, front.length()).trim();
+                String type="";
+
+                if(front.contains(" "))
+                {
+                    front=front.substring(0, front.lastIndexOf(" "));
+                    if(front.contains(" "))
+                    {
+                        type=front.substring(front.lastIndexOf(" ")+1,front.length()).trim();
+                    }
+                    else type=front;
+                }
+                else
+                    type=front;
+
+                type=type.trim();
+                IdentifierDS oneid=new IdentifierDS(classpar,methodpar,name,type,end,onevalue);
+
+                variables.add(oneid);
+
+
+            }
+            else
+            {
+                String name=onekey.substring(onekey.lastIndexOf(" ")+1, onekey.length()).trim();
+                onekey=onekey.substring(0, onekey.lastIndexOf(" ")).trim();
+                String type="";
+                if(onekey.contains(" "))
+                    type=onekey.substring(onekey.lastIndexOf(" ")+1, onekey.length()).trim();
+                else
+                    type=onekey;
+
+                type=type.trim();
+
+                IdentifierDS oneid=new IdentifierDS(classpar,methodpar,name,type,"",onevalue);
+
+                variables.add(oneid);
+
+            }
+        }
+
+
+        Vector<idenDS> allid=new Vector<idenDS>();
+        for(IdentifierDS onepackage:packages)
+        {
+//        	System.out.println(onepackage.toString());
+            String identifiername=onepackage.getName();
+            int location=onepackage.getLocation();
+            String singlestate="";
+            int purelocation=-1;
+            if(location-1>=0&&allstate.size()>0)
+            {
+                singlestate=allstate.get(location-1);
+                purelocation=location-1;
+            }
+
+            if(singlestate.contains(identifiername))
+            {
+                idenDS oness=new idenDS(1,identifiername,singlestate,purelocation);
+                allid.add(oness);
+            }
+            else
+            {
+                System.err.println("1: 标识符位置不对！"+identifiername+"  "+singlestate);
+            }
+
+        }
+        for(IdentifierDS onetype:types)
+        {
+//        	System.out.println(onetype.toString());
+
+            String identifiername=onetype.getName();
+            int location=onetype.getLocation();
+            location=location/100000;
+
+            String singlestate="";
+            int purelocation=-1;
+            if(location-1>=0&&allstate.size()>0)
+            {
+                singlestate=allstate.get(location-1);
+                purelocation=location-1;
+            }
+
+            if(singlestate.trim().startsWith("@"))
+            {
+                if(location<allstate.size())
+                {
+                    singlestate=allstate.get(location);
+                    purelocation=location;
+                }
+
+                if(singlestate.trim().startsWith("@"))
+                {
+                    singlestate=allstate.get(location+1);
+                    purelocation=location+1;
+                }
+            }
+
+            if(singlestate.contains(identifiername))
+            {
+                idenDS oness=new idenDS(2,identifiername,singlestate,purelocation);
+                allid.add(oness);
+            }
+            else
+            {
+                System.err.println("2: 标识符位置不对！"+identifiername+"  "+singlestate);
+            }
+
+        }
+        for(IdentifierDS onemethod:methods)
+        {
+            String identifiername=onemethod.getName();
+            int location=onemethod.getLocation();
+
+            String singlestate=allstate.get(location-1);
+            int purelocation=location-1;
+
+            if(singlestate.trim().startsWith("@"))
+            {
+                singlestate=allstate.get(location);
+                purelocation=location;
+
+                if(singlestate.trim().startsWith("@"))
+                {
+                    singlestate=allstate.get(location+1);
+                    purelocation=location+1;
+                }
+            }
+
+            if(singlestate.contains(identifiername))
+            {
+                idenDS oness=new idenDS(3,identifiername,singlestate,purelocation);
+                allid.add(oness);
+            }
+            else
+            {
+                System.err.println("3: 标识符位置不对！"+identifiername+"  "+singlestate);
+            }
+        }
+        for(IdentifierDS onefield:fields)
+        {
+            String identifiername=onefield.getName();
+            int location=onefield.getLocation();
+            String singlestate=allstate.get(location-1);
+            int purelocation=location-1;
+            if(singlestate.contains(identifiername))
+            {
+                idenDS oness=new idenDS(4,identifiername,singlestate,purelocation);
+                allid.add(oness);
+            }
+            else
+            {
+                System.err.println("4: 标识符位置不对！"+identifiername+"  "+singlestate);
+            }
+        }
+        for(IdentifierDS onevariable:variables)
+        {
+            String identifiername=onevariable.getName();
+            int location=onevariable.getLocation();
+            String singlestate=allstate.get(location-1);
+            int purelocation=location-1;
+            if(singlestate.trim().startsWith("@"))
+            {
+                singlestate=allstate.get(location);
+                purelocation=location;
+                if(singlestate.trim().startsWith("@"))
+                {
+                    singlestate=allstate.get(location+1);
+                    purelocation=location+1;
+                }
+            }
+
+            if(singlestate.contains(identifiername))
+            {
+                idenDS oness=new idenDS(5,identifiername,singlestate,purelocation);
+                allid.add(oness);
+            }
+            else
+            {
+                if(purelocation+1<allstate.size())
+                {
+                    singlestate=singlestate+" "+allstate.get(purelocation+1);
+                    //        		purelocation=location+1;
+                    if(singlestate.contains(identifiername))
+                    {
+                        idenDS oness=new idenDS(5,identifiername,singlestate,purelocation);
+                        allid.add(oness);
+                    }
+                    else
+                    {
+                        System.err.println("5: 标识符位置不对！"+identifiername+"  "+singlestate);
+                    }
+                }
+            }
+        }
+
+
+        return allid;
+
+    }
+    //这部分是查找对应的代码 (不同版本对应的代码行)
+    public static Vector<String> TraceAnalysis( String statement) throws Exception
+    {
+        //传入代码行
+        statement=statement.trim();
+        Vector<String> traceHistory=new Vector<String>();
+        traceHistory.add(statement);
+        //找与这个statement对应的代码行
+
+        traceHistory.add(statement);
+
+
+        return traceHistory;
+    }
+    public static void ExecuteCommand(String projectdir,String cmd,String output) throws Exception
+    {
+       System.out.println("projectdir:"+projectdir);
+
+        String[] command =
+                {
+                        "cmd",
+                };
+        Process p = Runtime.getRuntime().exec(command);
+        new Thread(new SyncPipe(p.getErrorStream(), System.err)).start();
+        new Thread(new SyncPipe(p.getInputStream(), System.out)).start();
+        PrintWriter stdin = new PrintWriter(p.getOutputStream());
+        stdin.println("D:");
+        stdin.println("cd "+projectdir);
+        stdin.println(cmd+" > "+output);
+        //stdin.println("git log >"+output);
+        stdin.close();
+        int returnCode = p.waitFor();
+        System.out.println("Return code = " + returnCode);
+    }
+    public static Vector<commitMessage> ParseCommandContent(String filename) throws Exception
+    {
+        //allmessage:
+        //allc:
+        Vector<commitMessage> allmessage=new Vector<commitMessage>();
+        Vector<String> allc=new Vector<String>();
+        BufferedReader br=new BufferedReader(new FileReader(filename));
+        String lines="";
+        while((lines=br.readLine())!=null)
+        {
+            allc.add(lines);
+        }
+        br.close();
+
+        Vector<Vector<String>> commitinfo=new Vector<Vector<String>>();
+        Vector<String> onecom=new Vector<String>();
+        for(int i=0;i<allc.size();i++)
+        {
+            if(allc.get(i).startsWith("commit "))
+            {
+                if(onecom.size()!=0)
+                {
+                    Vector<String> temp=new Vector<String>();
+                    temp.addAll(onecom);
+                    commitinfo.add(temp);
+                    onecom.clear();
+                    onecom.add(allc.get(i));
+                }
+                else
+                {
+                    onecom.add(allc.get(i));
+                }
+
+            }
+            else
+            {
+                onecom.add(allc.get(i));
+            }
+        }
+
+        if(onecom.size()!=0)
+        {
+            Vector<String> temp=new Vector<String>();
+            temp.addAll(onecom);
+            commitinfo.add(temp);
+            onecom.clear();
+        }
+
+
+//		System.out.println("commit NO: "+commitinfo.size());
+
+        for(Vector<String> onecommit:commitinfo)
+        {
+//			for(String ssss:onecommit)
+//				System.out.println(ssss);
+            String commitid="";
+            String author="";
+            String date="";
+            String message="";
+            StringBuilder sb=new StringBuilder();
+
+            for(String line:onecommit)
+            {
+                if(line.startsWith("commit"))
+                {
+                    commitid=line.substring("commit".length(), line.length()).trim();
+                }
+                else if(line.startsWith("Author:"))
+                {
+                    author=line.substring("Author:".length(), line.length()).trim();
+                }
+                else if(line.startsWith("Date:"))
+                {
+                    date=line.substring("Date:".length(), line.length()).trim();
+                }
+                else if(line.startsWith("    "))
+                {
+                    message+=line.trim()+"\n";
+                }
+                else
+                {
+                    sb.append(line+"\n");
+                }
+            }
+
+//
+//			System.out.println(commitid+"\n");
+//			System.out.println(author+"\n");
+//			System.out.println(date+"\n");
+//			System.out.println(message+"\n");
+
+            Vector<Diff> difflist=new Vector<Diff>();
+            String mess=sb.toString();
+            String split[]=mess.split("diff --git");
+
+//			System.out.println(split.length-1);
+            for(String s:split)
+            {
+                if(!s.trim().isEmpty())
+                {
+                    Diff onediff=AnalyzeDiff("diff --git "+s.trim());
+//					System.out.println(onediff.toString());
+//					System.out.println("****************************");
+                    difflist.add(onediff);
+                }
+            }
+            commitMessage onecommitmessage=new commitMessage(commitid, author, date, message,difflist);
+            allmessage.add(onecommitmessage);
+        }
+        return allmessage;
+    }
+    public static Diff AnalyzeDiff(String s)
+    {
+        String split[]=s.split("\n");
+        String fromFile="";
+        String toFile="";
+        String index="";
+        Vector<String> content=new Vector<String>();
+        for(String oneline:split)
+        {
+            oneline=oneline.trim();
+            if(oneline.startsWith("--- "))
+            {
+                fromFile=oneline.substring(oneline.indexOf("--- ")+"--- ".length(), oneline.length());
+            }
+            else if(oneline.startsWith("+++ "))
+            {
+                toFile=oneline.substring(oneline.indexOf("+++ ")+"+++ ".length(), oneline.length());
+            }
+            else if(oneline.startsWith("+++ "))
+            {
+                toFile=oneline.substring(oneline.indexOf("+++ ")+"+++ ".length(), oneline.length());
+            }
+            else if(oneline.startsWith("@@"))
+            {
+                index=oneline.replace("@", "").trim();
+            }
+            else
+            {
+                if(!oneline.startsWith("diff --git ")&&!oneline.isEmpty())
+                    content.add(oneline);
+            }
+        }
+
+        Diff one=new Diff(fromFile,toFile,index,content);
+        return one;
+    }
+
+}
+
+   class idenDS
+    {
+        int type;
+        String identifier;
+        String statement;
+        int location;
+        public int getType() {
+            return type;
+        }
+        public void setType(int type) {
+            this.type = type;
+        }
+        public String getIdentifier() {
+            return identifier;
+        }
+        public void setIdentifier(String identifier) {
+            this.identifier = identifier;
+        }
+        public String getStatement() {
+            return statement;
+        }
+        public void setStatement(String statement) {
+            this.statement = statement;
+        }
+        public int getLocation() {
+            return location;
+        }
+        public void setLocation(int location) {
+            this.location = location;
+        }
+        public idenDS(int type, String identifier, String statement, int location) {
+            super();
+            this.type = type;
+            this.identifier = identifier;
+            this.statement = statement;
+            this.location = location;
+        }
+        @Override
+        public String toString() {
+            return "idenDS [type=" + type + ", identifier=" + identifier + ", statement=" + statement + ", location="
+                    + location + "]";
+        }
+
+    }
+
+
+class commitMessage
+{
+    //获取得到的 id，author,date,message,diff显示部分（diff list）
+    String commitid;
+    String author;
+    String date;
+    String message;
+    Vector<Diff> difflist=new Vector<Diff>();
+    public String getCommitid() {
+        return commitid;
+    }
+    public void setCommitid(String commitid) {
+        this.commitid = commitid;
+    }
+    public String getAuthor() {
+        return author;
+    }
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+    public String getDate() {
+        return date;
+    }
+    public void setDate(String date) {
+        this.date = date;
+    }
+    public String getMessage() {
+        return message;
+    }
+    public void setMessage(String message) {
+        this.message = message;
+    }
+    public Vector<Diff> getDifflist() {
+        return difflist;
+    }
+    public void setDifflist(Vector<Diff> difflist) {
+        this.difflist = difflist;
+    }
+    public commitMessage(String commitid, String author, String date, String message, Vector<Diff> difflist) {
+        super();
+        this.commitid = commitid;
+        this.author = author;
+        this.date = date;
+        this.message = message;
+        this.difflist = difflist;
+    }
+    @Override
+    public String toString() {
+        return "commitMessage [commitid=" + commitid + ", author=" + author + ", date=" + date + ", message=" + message
+                + ", difflist=" + difflist.size() + "]";
+    }
+
+
+
+}
+class Diff
+{
+    String fromFile;
+    String toFile;
+    String index;
+    Vector<String> content=new Vector<String>();
+    //文件
+    public String getFromFile() {
+        return fromFile;
+    }
+    public void setFromFile(String fromFile) {
+        this.fromFile = fromFile;
+    }
+    public String getToFile() {
+        return toFile;
+    }
+    public void setToFile(String toFile) {
+        this.toFile = toFile;
+    }
+
+//比较的行数
+    public String getIndex() {
+        return index;
+    }
+    public void setIndex(String index) {
+        this.index = index;
+    }
+    public Vector<String> getContent() {
+        return content;
+    }
+    public void setContent(Vector<String> content) {
+        this.content = content;
+    }
+    public Diff(String fromFile, String toFile, String index, Vector<String> content) {
+        super();
+        this.fromFile = fromFile;
+        this.toFile = toFile;
+        this.index = index;
+        this.content = content;
+    }
+    @Override
+    public String toString() {
+        return "Diff [fromFile=" + fromFile + ", toFile=" + toFile + ", index=" + index + ", content=" + content.toString() + "]";
+    }
+
+
+
+
+
+
+}
+
+
+
+

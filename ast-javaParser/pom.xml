@@ -40,6 +40,19 @@
             <artifactId>commons-lang3</artifactId>
             <version>3.4</version>
         </dependency>
+<!--        导入分词工具-->
+        <dependency>
+            <groupId>uk.org.facetus</groupId>
+            <artifactId>intt</artifactId>
+            <version>0.8.0</version>
+        </dependency>
+        <dependency>
+            <groupId>de.julielab</groupId>
+            <artifactId>aliasi-lingpipe</artifactId>
+            <version>4.1.0</version>
+        </dependency>
+        <!-- Thanks for using https://jar-download.com -->
+
     </dependencies>
 
 

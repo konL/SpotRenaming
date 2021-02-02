@@ -1,5 +1,11 @@
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import org.apache.commons.lang3.StringUtils;
 
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -7,6 +13,11 @@ import java.util.regex.Pattern;
 public class Test {
 
     public static void main(String[] args) throws Exception {
+//        String[] s="ds.ds".split("\\.");
+//        for (String str:s){
+//            System.out.println(str);
+//        }
+
 //        String[] oldset=split("[m_BaseInstance]");
 //        String[] newset=split("[m_Instance]");
 //        String[] res={ "[m_BaseInstPanel]", "[setBaseInstanceFromFileQ]","[setBaseInstancesFromDBQ]"};
@@ -14,12 +25,35 @@ public class Test {
 //            analysis(changedPart(oldset, newset), oldset, resName);
 //        }
 //提取出局部变量的方法
-        Map<String, List> map=JavaParserUtils.getData();
-        List<String> list=map.get("variable_name");
-        for(String s:list){
+            Map<String, List> map=JavaParserUtils.getData();
+            System.out.println("-------------------------------------------");
+            List<String> list=map.get("call_relation");
+            Map<String, String> amap=JavaParserUtils.nameExprMap;
+            for(String s:list) {
 
-            System.out.println(s);
-        }
+                System.out.println(s);
+            }
+//                NameExpr v=amap.get(s);
+//                JavaParserUtils.getParents(v);
+      //      }
+//        if(list.contains("m_BaseInstance")){
+//            System.out.println("callset包含");
+//            NameExpr v=amap.get("m_BaseInstance");
+//            JavaParserUtils.getParents(v);
+//
+//            }
+//               FieldDeclaration f=fieldMap.get("[m_BaseInstance]");
+//                JavaParserUtils.getParents(f);
+
+//        Map<String, VariableDeclarationExpr> variableMap=JavaParserUtils.variableMap;
+//        for(String s:list) {
+//
+//            System.out.println(s);
+//            VariableDeclarationExpr v = variableMap.get(s);
+//            JavaParserUtils.getParents(v);
+//        }
+
+//            }
 
     }
     public static  Map<String,List<List<String>>> changedPart(String[] s1,String[] s2){

@@ -1,3 +1,7 @@
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigDecimal;
@@ -9,7 +13,12 @@ public class FindRes {
     static List<String>  fieldsName;
     static List<String> methodName;
     static List<String> variableName;
-    //className
+    static List<String> callSet;
+    //获取declaration
+    static Map<String, FieldDeclaration> fieldMap=JavaParserUtils.fieldMap;
+    static Map<String, MethodDeclaration> methodMap=JavaParserUtils.methodMap;
+    static Map<String, VariableDeclarationExpr> variableMap=JavaParserUtils.variableMap;
+    static Map<String, String> callMap=JavaParserUtils.nameExprMap;
 
     public static void main(String[] args) throws Exception {
         //从Parser中获取变量名和方法名
@@ -18,15 +27,21 @@ public class FindRes {
         fieldsName=map.get("fields_name");
         methodName=map.get("method_name");
         variableName=map.get("variable_name");
+        callSet=map.get("call_relation");
+
 
 
         //为了方便，先假设已经检测出更改的变量名为m_BaseInstance,寻找其他高相似度标识符
-        String old="[m_BaseInstanceCase]";
+        String old="[m_BaseInstance]";
         String news="[m_Instance]";
-        fieldsName.remove("[m_BaseInstanceCase]");
+        //fieldsName.remove("[m_BaseInstance]");
 
         //SearchEnginne获取res集合（相关）
         String [] res=searchRes(old);
+        System.out.println(res.length);
+        for(String s:res){
+            System.out.println(s);
+        }
             //按照术语分割标识
             String[] oldSet=split(old);
             String[] newSet=split(news);
@@ -291,36 +306,101 @@ public class FindRes {
     }
 
     //method 这个map 对应的List<Map<merhodName,List<String>>={<methodName1,List<localVariable>,<methName2,List<localVariable>}},methodName被单独取出。
+    //”。它收集密切相关的软件实体(访问该字段的方法)
     private static String[] searchRes(String old) {
-        /*1）Inclusion：包含e直接包含的实体和直接包含e的元素。*/
-        //直接包含e，e是函数就是被调用;e是全局变量就是方法中的变量包含e，或者是其他类使用;如果是方法的局部变量，被调用 xxx.attr
-            //1.如果是函数,检测调用该函数的软件实体
-            if(methodName.contains(old)){
+//        /*1）Inclusion：包含e直接包含的实体和直接包含e的元素。*/
+//        //直接包含e，e是函数就是被调用;e是全局变量就是方法中的变量包含e，或者是其他类使用;如果是方法的局部变量，被调用 xxx.attr
+//            //1.如果是函数,检测调用该函数的软件实体
+//            if(methodName.contains(old)){
+//
+//            }
+//            //2.如果是全局变量，方法中的变量包含e，或者是其他类使用
+//            if(fieldsName.contains(old)){
+//                //NameExpr
+//
+//            }
+//            //3.如果是局部变量，包含该变量的方法/静态方法还会被调用红
+//            if(variableName.contains(old)){
+//
+//            }
+//
+//
+//
+//
+//
+//
+//        //包含e直接包含的实体，暂不考虑。
+//                /*
+//2）Sibling：e是一个方法，同一个类中的所有方法和字段都被认为是紧密相关的实体
+//3）Reference：e所引用的所有实体和引用e的实体
+//4)   Inheritance：e是一个类，则其超类和子类
+//
+//         */
+        System.out.println(old);
+        Set<String> set=new HashSet<>();
 
-            }
-            //2.如果是全局变量，方法中的变量包含e，或者是其他类使用
-            if(fieldsName.contains(old)){
 
-            }
-            //3.如果是局部变量，包含该变量的方法/静态方法还会被调用红
-            if(variableName.contains(old)){
+        //-------------------------------方法二-----------------------------
+        //1.直接包含的实体--
+            //1.1如果是函数,检测调用该函数的软件实体
+                if(methodName.contains(old)){
+                    MethodDeclaration m=methodMap.get(old);
+                    String[] data=JavaParserUtils.getParents(m).split("\\.");
+                    for(String s:data){
+                        if(!s.equals("")){
+                            set.add(s);
+                        }
+                    }
 
-            }
 
 
+                }
+                //1.2.如果是全局变量，方法中的变量包含e，或者是其他类使用
+               if(fieldsName.contains(old)){
+
+                    FieldDeclaration f=fieldMap.get(old);
+                    String[] data=JavaParserUtils.getParents(f).split("\\.");
+
+                    for(String s:data) {
+                        if (!s.equals("")) {
+                            set.add(s);
+                        }
+                    }
+
+                }
+                //1.3.如果是局部变量，包含该变量的方法/静态方法还会被调用红
+               if(variableName.contains(old.substring(1,old.length()-1))){
+                   VariableDeclarationExpr v=variableMap.get(old.substring(1,old.length()-1));
+                    String[] data=JavaParserUtils.getParents(v).split("\\.");
+                    for(String s:data){
+                        if(!s.equals("")){
+                            set.add(s);
+                        }
+                    }
+
+                }
+                if(callSet.contains(old.substring(1,old.length()-1))){
 
 
+                   //特殊处理：
+                    //<m_Baseinstance,src1.src2>
 
+                    String[] data=callMap.get(old.substring(1,old.length()-1)).split("\\.");
+                    for(String s:data){
+                        if(!s.equals("")){
+                            set.add(s);
+                        }
+                    }
 
-        //包含e直接包含的实体，暂不考虑。
-                /*
-2）Sibling：e是一个方法，同一个类中的所有方法和字段都被认为是紧密相关的实体
-3）Reference：e所引用的所有实体和引用e的实体
-4)   Inheritance：e是一个类，则其超类和子类
+                }
 
-         */
+/*NameExpr:m_BaseInstance
+MethodCallExpr:setBaseInstances*/
+        //2.sibling 类Srccode的所有字段和方法（先不考虑吧）
+        //3.直接访问这个字段的方法
         //先生成数据
-        String[] res={ "[m_BaseInstPanelCase]", "[setBaseInstanceFromFileQCase]","[setBaseInstancesFromDBQCase]"};
+        String[] res = set.toArray(new String[set.size()]);
+        //String[] res_={ "[m_BaseInstPanelCase]", "[setBaseInstanceFromFileQCase]","[setBaseInstancesFromDBQCase]"};
         return res;
     }
 
