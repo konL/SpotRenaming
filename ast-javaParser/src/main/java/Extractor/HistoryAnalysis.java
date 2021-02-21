@@ -34,9 +34,9 @@ public class HistoryAnalysis {
 
         String projectpath = "D:\\project\\IdentifierStyle\\data\\GitProject\\" + projectname + "\\";
         String FileIndex = "D:\\project\\IdentifierStyle\\data\\JavaFileIndex\\" + projectname + ".txt";
+        //以下是程序的输出文件
         String LogOutput = "D:\\project\\IdentifierStyle\\log\\log_output1.txt";
-//        String LogOutput = "D:\\project\\IdentifierStyle\\log\\log_output1.txt";
-//        String TraceHistory = "D:\\project\\IdentifierStyle\\log\\dump\\" + projectname + ".csv";
+        String TraceHistory = "D:\\project\\IdentifierStyle\\log\\dump\\" + projectname + ".csv";
         //根据FileIndex读取
 
 
@@ -77,9 +77,44 @@ public class HistoryAnalysis {
                 lineno++;
                 ExecuteCommand(projectpath, "git log -L " + lineno + "," + lineno + ":" + file, LogOutput);
                 Vector<commitMessage> allcom = ParseCommandContent(LogOutput);
-//                Vector<String> traceResult=TraceAnalysis(allcom,statement);
+                Vector<String> traceResult=TraceAnalysis(allcom,statement);
+                if(traceResult.size()>1)
+                {
+                    //获取beforeId
+                    Vector<String> beforeId=ExtractIdFromStatement(traceResult,iden.getIdentifier(),iden.getType());
+                    System.out.println(beforeId.size());
+                    for(String s:beforeId){
+                        System.out.println(s+"-------------");
+                    }
+
+                    //根据history把修改历史写入csv
+                    BufferedWriter bw=new BufferedWriter(new FileWriter(TraceHistory,true));
+                    //tyepe,行数，文件位置，（修改历史，下面这个循环），每个statement
+                    bw.write(iden.getType()+","+iden.getLocation()+","+line+",");
+
+                    bw.write(iden.getIdentifier()+"<-");
+                    for(String onetr:beforeId)
+                    {
+                        bw.write(onetr+"<-");
+                    }
+                    bw.write(",");
+                    for(String onehis:traceResult)
+                    {
+                        if(onehis.contains(","))
+                        {
+                            onehis=onehis.replace(",", " ");
+                        }
+                        bw.write(onehis+",");
+                    }
+                    bw.newLine();
+                    bw.close();
+
+                }
+//                for(String t:traceResult){
+//                    System.out.println(statement+"【History】===========》："+t);
+//                }
 //                System.out.println(identifier+",statement="+statement+",location="+lineno);
-                //打印解析数据
+//                //打印解析数据
 //                for(commitMessage c:allcom){
 //                    Vector<Diff> diffList=c.getDifflist();
 //                    for(Diff d:diffList){
@@ -91,57 +126,11 @@ public class HistoryAnalysis {
 //                    }
 //
 //                }
-//            }
+////            }
 
 
-//            String file=line.substring(line.indexOf(projectpath)+projectpath.length(), line.length());
-//            file=file.replace("\\", "/");
-//            file="./"+file;
-//
-//            for(idenDS oneiden:alliden)
-//            {
-//                String statement=oneiden.getStatement();
-//                int lineno=oneiden.getLocation();
-//                lineno++;
-////				ExecuteCommand(projectname,"git log --reverse -L "+lineno+","+lineno+":"+file,LogOutput);
-//                ExecuteCommand(projectpath,"git log -L "+lineno+","+lineno+":"+file,LogOutput);
-//                Vector<commitMessage> allcom=ParseCommandContent(LogOutput);
-//                Vector<String> traceResult=TraceAnalysis(allcom,statement);
-//                if(traceResult.size()>1)
-//                {
-////					System.err.println("***************************");
-////					System.err.println(file+"  "+statement);
-////					System.err.println("***************************");
-//
-//                    Vector<String> beforeId=ExtractIdFromStatement(traceResult,oneiden.getIdentifier(),oneiden.getType());
-//
-//                    BufferedWriter bw=new BufferedWriter(new FileWriter(TraceHistory,true));
-//                    bw.write(oneiden.getType()+","+oneiden.getLocation()+","+line+",");
-//
-//                    bw.write(oneiden.getIdentifier()+"<-");
-//                    for(String onetr:beforeId)
-//                    {
-//                        bw.write(onetr+"<-");
-//                    }
-//                    bw.write(",");
-//
-//                    for(String onehis:traceResult)
-//                    {
-//                        if(onehis.contains(","))
-//                        {
-//                            onehis=onehis.replace(",", " ");
-//                        }
-//                        bw.write(onehis+",");
-//                    }
-//                    bw.newLine();
-//                    bw.close();
-//                }
-//            }
-//
-//        }
-//        br.close();
-//
-//        ParseProjectResult(TraceHistory,projectname);
+
+
 
 
             }
@@ -483,15 +472,43 @@ public class HistoryAnalysis {
 
     }
     //这部分是查找对应的代码 (不同版本对应的代码行)
-    public static Vector<String> TraceAnalysis( String statement) throws Exception
+    public static Vector<String> TraceAnalysis(Vector<commitMessage> allcom, String statement) throws Exception
     {
         //传入代码行
         statement=statement.trim();
         Vector<String> traceHistory=new Vector<String>();
         traceHistory.add(statement);
-        //找与这个statement对应的代码行
+        //----------------找与这个statement对应的代码行-------------------
 
-        traceHistory.add(statement);
+        for(commitMessage m:allcom)
+        {
+            //获取commit中diff的内容
+            Vector<Diff> difflist=m.getDifflist();
+            for(Diff onediff:difflist)
+            {
+                //主要获取内容，其他author啥的就不管了
+                Vector<String> content=onediff.getContent();
+                for(String line:content)
+                {
+                    //以-开始，就是原文件中被删除的/被修改的一行
+                    if(line.startsWith("- "))
+                    {
+                        //获取纯文本内容
+                        line=line.substring(1,line.length()).trim();
+                        //计算原来代码 line,和现在的代码行statement
+                        //具有高相似度则是同一行代码，并且被修改
+                        float simi=SimilarityCal.calEditSimi(line, statement);
+                        if(simi>0.85&&simi!=1)
+                        {
+                            statement=line;
+                            //加入修改历史中。接着顺延，再看现在
+                            traceHistory.add(statement);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
 
 
         return traceHistory;
@@ -662,6 +679,176 @@ public class HistoryAnalysis {
 
         Diff one=new Diff(fromFile,toFile,index,content);
         return one;
+    }
+    public static Vector<String> ExtractIdFromStatement(Vector<String> traceResult, String identifier, int type) throws Exception
+    {
+        Vector<String> result=new Vector<String>();
+        for(int i=1;i<traceResult.size();i++)
+//		for(String onetrace:traceResult)
+        {
+            String onetrace=traceResult.get(i);
+            onetrace=onetrace.trim();
+            if(onetrace.endsWith(";"))
+                onetrace=onetrace.substring(0,onetrace.length()-1);
+            onetrace=onetrace.trim();
+
+            if(type==1)
+            {
+                if(onetrace.startsWith("/*"))
+                    onetrace=onetrace.substring(onetrace.indexOf("*/")+2, onetrace.length()).trim();
+                if(onetrace.startsWith("//"))
+                    onetrace=onetrace.substring(onetrace.indexOf("package "),onetrace.length());
+                if(onetrace.startsWith("package "))
+                    onetrace=onetrace.substring(onetrace.indexOf(" ")+1,onetrace.length());
+
+                result.add(onetrace);
+            }
+            else if(type==2)
+            {
+                if(onetrace.endsWith("{"))
+                    onetrace=onetrace.substring(0, onetrace.length()-1);
+                if(onetrace.contains(" implements "))
+                    onetrace=onetrace.substring(0, onetrace.indexOf(" implements ")).trim();
+
+                if(onetrace.contains(" extends "))
+                    onetrace=onetrace.substring(0, onetrace.indexOf(" extends ")).trim();
+
+                if(onetrace.contains(" "))
+                {
+                    onetrace=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length()).trim();
+                    result.add(onetrace);
+                }
+                else
+                {
+                    result.add(onetrace);
+                }
+
+            }
+            else if(type==3)
+            {
+                if(onetrace.contains("("))
+                    onetrace=onetrace.substring(0, onetrace.indexOf("(")).trim();
+
+                if(onetrace.contains(" "))
+                {
+                    onetrace=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length()).trim();
+                    result.add(onetrace);
+                }
+                else
+                {
+                    result.add(onetrace);
+                }
+
+            }
+            else if(type==4)
+            {
+                if(onetrace.contains("="))
+                    onetrace=onetrace.substring(0, onetrace.indexOf("=")).trim();
+                if(onetrace.contains(" "))
+                {
+                    onetrace=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length()).trim();
+                    result.add(onetrace);
+                }
+                else
+                {
+                    result.add(onetrace);
+                }
+
+            }
+            else if(type==5)
+            {
+                if(!onetrace.contains("=")&&onetrace.contains("("))
+                {
+                    if(onetrace.contains(")"))
+                    {
+                        onetrace=onetrace.substring(onetrace.indexOf("(")+1, onetrace.indexOf(")"));
+                    }
+                    else
+                    {
+                        onetrace=onetrace.substring(onetrace.indexOf("(")+1, onetrace.length()).trim();
+                    }
+
+                    if(onetrace.contains(","))
+                    {
+                        Vector<String> needtest=new Vector<String>();
+                        String spl[]=onetrace.split(",");
+                        for(String onespl:spl)
+                        {
+                            onespl=onespl.trim();
+                            String test=onespl.trim();
+                            if(onespl.contains(" "))
+                            {
+                                test=onespl.substring(onespl.lastIndexOf(" ")+1, onespl.length());
+                            }
+                            needtest.add(test);
+
+                        }
+
+                        float max=0;
+                        String maxstring="";
+                        for(String ss:needtest)
+                        {
+                            float simi= SimilarityCal.calEditSimi(ss, identifier);
+                            if(simi>max)
+                            {
+                                max=simi;
+                                maxstring=ss;
+                            }
+                        }
+                        result.add(maxstring);
+
+                    }
+                    else if(onetrace.contains(":"))
+                    {
+                        onetrace=onetrace.substring(0,onetrace.indexOf(":")).trim();
+                        String test=onetrace;
+                        if(onetrace.contains(" "))
+                        {
+                            test=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length());
+                        }
+                        result.add(test);
+                    }
+                    else if(onetrace.contains(";"))
+                    {
+                        onetrace=onetrace.substring(0,onetrace.indexOf(";")).trim();
+                        String test=onetrace;
+                        if(onetrace.contains(" "))
+                        {
+                            test=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length());
+                        }
+                        result.add(test);
+                    }
+                    else
+                    {
+                        String test=onetrace.trim();
+                        if(onetrace.contains(" "))
+                        {
+                            test=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length());
+                        }
+                        result.add(test);
+                    }
+
+
+                }
+                else
+                {
+                    if(onetrace.contains("="))
+                        onetrace=onetrace.substring(0, onetrace.indexOf("=")).trim();
+
+                    if(onetrace.contains(" "))
+                    {
+                        onetrace=onetrace.substring(onetrace.lastIndexOf(" ")+1, onetrace.length()).trim();
+                        result.add(onetrace);
+                    }
+                    else
+                    {
+                        result.add(onetrace);
+                    }
+                }
+            }
+
+        }
+        return result;
     }
 
 }

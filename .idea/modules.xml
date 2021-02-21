@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/SematicDetect/SematicDetect.iml" filepath="$PROJECT_DIR$/SematicDetect/SematicDetect.iml" />
       <module fileurl="file://$PROJECT_DIR$/SpotRenaming.iml" filepath="$PROJECT_DIR$/SpotRenaming.iml" />
+      <module fileurl="file://$PROJECT_DIR$/TestModule/TestModule.iml" filepath="$PROJECT_DIR$/TestModule/TestModule.iml" />
       <module fileurl="file://$PROJECT_DIR$/ast-javaParser/ast-javaParser.iml" filepath="$PROJECT_DIR$/ast-javaParser/ast-javaParser.iml" />
     </modules>
   </component>

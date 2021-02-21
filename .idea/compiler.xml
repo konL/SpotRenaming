@@ -6,11 +6,15 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="TestModule" />
+        <module name="SematicDetect" />
         <module name="ast-javaParser" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="ast-javaParser" target="8" />
+      <module name="SematicDetect" target="1.5" />
+      <module name="TestModule" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

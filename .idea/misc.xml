@@ -4,6 +4,8 @@
     <option name="originalFiles">
       <list>
         <option value="$PROJECT_DIR$/ast-javaParser/pom.xml" />
+        <option value="$PROJECT_DIR$/SematicDetect/pom.xml" />
+        <option value="$PROJECT_DIR$/TestModule/pom.xml" />
       </list>
     </option>
   </component>
