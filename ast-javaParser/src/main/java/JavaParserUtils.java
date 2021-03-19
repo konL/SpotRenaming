@@ -76,7 +76,7 @@ public class JavaParserUtils {
         });
 
         // convert StringBuilder into String and return the String
-        System.out.println("parents:"+path.toString());
+        //System.out.println("parents:"+path.toString());
         return path.toString();
     }
     public static String getParents(final MethodDeclaration methodDeclaration) {
@@ -185,7 +185,7 @@ public class JavaParserUtils {
 
             methodName.add(n.getNameAsString());
             methodMap.put(n.getNameAsString(),n);
-            System.out.println("methodName:"+n.getName());
+           //System.out.println("methodName:"+n.getName());
 
            // System.out.println("methodParams:"+n.getBody().);
 //            System.out.println("----------------------------------------------------------------------------");
@@ -227,12 +227,12 @@ public class JavaParserUtils {
         }
         @Override
         public void visit(MethodCallExpr n, Void arg) {
-            System.out.println("MethodCallExpr:"+n.getName());
+            //System.out.println("MethodCallExpr:"+n.getName());
             super.visit(n, arg);
         }
         @Override
         public void visit(NameExpr n, Void arg) {
-            System.out.println("NameExpr:"+n.getName());
+            //System.out.println("NameExpr:"+n.getName());
             getParents(n);
 
             callSet.add(n.getNameAsString());

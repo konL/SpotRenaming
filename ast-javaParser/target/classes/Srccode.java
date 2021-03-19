@@ -12,6 +12,9 @@ public class Srccode extends JPanel {
         setBaseInstanceFromFileQ();
         //.......
     }
+    public  static void setCaseInstance(){
+      //..............
+    }
     public void setBaseInstanceFromFileQ(){
       int as=0;
       int as2=1;

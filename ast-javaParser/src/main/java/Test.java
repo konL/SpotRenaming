@@ -2,13 +2,15 @@ import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import org.apache.commons.lang3.StringUtils;
+import com.github.javaparser.ast.body.MethodDeclaration;
 
-import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
 
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 
 public class Test {
 
@@ -25,37 +27,54 @@ public class Test {
 //            analysis(changedPart(oldset, newset), oldset, resName);
 //        }
 //提取出局部变量的方法
-            Map<String, List> map=JavaParserUtils.getData();
-            System.out.println("-------------------------------------------");
-            List<String> list=map.get("call_relation");
-            Map<String, String> amap=JavaParserUtils.nameExprMap;
-            for(String s:list) {
-
-                System.out.println(s);
-            }
-//                NameExpr v=amap.get(s);
-//                JavaParserUtils.getParents(v);
-      //      }
-//        if(list.contains("m_BaseInstance")){
-//            System.out.println("callset包含");
-//            NameExpr v=amap.get("m_BaseInstance");
-//            JavaParserUtils.getParents(v);
+        Map<String, List> map = JavaParserUtils.getData();
+//            System.out.println("-------------------------------------------");
+//        List<String> list = map.get("call_relation");
+//        Map<String, String> amap = JavaParserUtils.nameExprMap;
+//        for (String s : list) {
 //
-//            }
-//               FieldDeclaration f=fieldMap.get("[m_BaseInstance]");
-//                JavaParserUtils.getParents(f);
-
-//        Map<String, VariableDeclarationExpr> variableMap=JavaParserUtils.variableMap;
-//        for(String s:list) {
+//            System.out.println(s + "[parent]=" + amap.get(s));
 //
-//            System.out.println(s);
-//            VariableDeclarationExpr v = variableMap.get(s);
-//            JavaParserUtils.getParents(v);
+//
 //        }
+        //函数
+        List<String> method=map.get("method_name");
+        Map<String,MethodDeclaration> mMap=JavaParserUtils.methodMap;
+        for(String s:method) {
+            MethodDeclaration m = mMap.get(s);
+            System.out.print("【method】"+s+ "===>");
+            JavaParserUtils.getParents(m);
+        }
+        //全局变量
+        List<String> field=map.get("fields_name");
+        Map<String,FieldDeclaration> fMap=JavaParserUtils.fieldMap;
+        for(String s:field) {
+           FieldDeclaration f = fMap.get(s);
+            System.out.print("【field】"+s+ "===>");
+            JavaParserUtils.getParents(f);
+        }
+        //局部变量
+        List<String> var=map.get("variable_name");
+        Map<String,VariableDeclarationExpr> varMap=JavaParserUtils.variableMap;
+        for(String s:var) {
+            VariableDeclarationExpr v = varMap.get(s);
+            System.out.print("【variable】"+s+ "===>");
+            JavaParserUtils.getParents(v);
+        }
+        //nameExpr，就是包含在方法中地实体e
+        List<String> nameexpr=map.get("call_relation");
+        Map<String,String> nameExprMap=JavaParserUtils.nameExprMap;
+        for(String name:nameexpr){
 
-//            }
+        System.out.println("【nameExpr】 "+name+"===>"+nameExprMap.get(name));
+        }
 
     }
+
+
+
+
+
     public static  Map<String,List<List<String>>> changedPart(String[] s1,String[] s2){
         List<String> oldN=new ArrayList<>(Arrays.asList(s1));
         List<String> newN=new ArrayList<>(Arrays.asList(s2));

@@ -24,7 +24,9 @@ import java.util.Vector;
 public class HistoryAnalysis {
     public static void main(String[] args) throws Exception {
         //读取项目的信息
-        ProjectCommit("Test");
+        //ProjectCommit("Test");
+        //ProjectCommit("flink");
+        ProjectCommit("facebook-android-sdk");
     }
 
     /*
@@ -38,8 +40,6 @@ public class HistoryAnalysis {
         String LogOutput = "D:\\project\\IdentifierStyle\\log\\log_output1.txt";
         String TraceHistory = "D:\\project\\IdentifierStyle\\log\\dump\\" + projectname + ".csv";
         //根据FileIndex读取
-
-
         //allcode：每个源代码文件的代码
         //line:源代码文件位置
         BufferedReader br = new BufferedReader(new FileReader(FileIndex));
@@ -53,9 +53,9 @@ public class HistoryAnalysis {
             }
             read.close();
 
-//            for (String s : allcode) {
-//                System.out.println(s);
-//            }
+            for (String s : allcode) {
+                System.out.println(s);
+            }
 
             //String file=line.substring(line.indexOf(projectpath)+projectpath.length(), line.length());
             String file = line.substring(line.indexOf(projectname) + projectname.length() + 2, line.length());
@@ -66,8 +66,10 @@ public class HistoryAnalysis {
 
             //获取所有标识符
             Vector<idenDS> alliden = ObtainIdentifier(allcode, line);
-            System.out.println(file);
+            System.out.println(alliden.size());
+
             for (idenDS iden : alliden) {
+
                 //获得相应的标识符
                 String identifier = iden.getIdentifier();
                 //获取对应代码
@@ -76,8 +78,10 @@ public class HistoryAnalysis {
                 int lineno = iden.getLocation();
                 lineno++;
                 ExecuteCommand(projectpath, "git log -L " + lineno + "," + lineno + ":" + file, LogOutput);
+                //log输出
                 Vector<commitMessage> allcom = ParseCommandContent(LogOutput);
                 Vector<String> traceResult=TraceAnalysis(allcom,statement);
+                //有修改历史的话
                 if(traceResult.size()>1)
                 {
                     //获取beforeId
@@ -86,6 +90,7 @@ public class HistoryAnalysis {
                     for(String s:beforeId){
                         System.out.println(s+"-------------");
                     }
+                    System.out.println("根据history把修改历史写入csv");
 
                     //根据history把修改历史写入csv
                     BufferedWriter bw=new BufferedWriter(new FileWriter(TraceHistory,true));

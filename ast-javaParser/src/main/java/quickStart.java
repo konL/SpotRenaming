@@ -9,7 +9,7 @@ import java.io.FileNotFoundException;
 public class quickStart {
     public static void main(String[] args) throws FileNotFoundException {
         // Parse the code you want to inspect:
-        File file=new File("D:\\kon_data\\JAVA_DATA\\SpotRenaming\\ast-javaParser\\src\\main\\resources\\Srccode.java");
+        File file=new File("D:\\kon_data\\JAVA_DATA\\SpotRenaming\\ast-javaParser\\src\\main\\resources\\quickStart.java");
         CompilationUnit cu = JavaParser.parse(file);
 
         // Now comes the inspection code:
